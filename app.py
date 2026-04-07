@@ -1,19 +1,33 @@
 from flask import Flask, render_template, request, send_file
-import pytesseract
-from PIL import Image
 import json
 import os
+import requests
 
 app = Flask(__name__)
 
-# Ensure output folder exists
 os.makedirs("output", exist_ok=True)
 
-def process_image(image):
-    image = image.convert("L")
-    image = image.resize((image.width * 2, image.height * 2))
-    image = image.point(lambda x: 0 if x < 140 else 255)
-    return image
+# 🔥 OCR using API (no Tesseract needed)
+def extract_text_api(file):
+    url = "https://api.ocr.space/parse/image"
+
+    payload = {
+        'apikey': 'helloworld',  # free key
+        'language': 'eng'
+    }
+
+    files = {
+        'file': file
+    }
+
+    response = requests.post(url, files=files, data=payload)
+    result = response.json()
+
+    try:
+        return result['ParsedResults'][0]['ParsedText']
+    except:
+        return "OCR Failed"
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -33,12 +47,8 @@ def index():
                 error = "Empty file"
                 return render_template('index.html', result=result, error=error)
 
-            image = Image.open(file)
-
-            image = process_image(image)
-
-            # OCR
-            text = pytesseract.image_to_string(image)
+            # 🔥 OCR using API
+            text = extract_text_api(file)
 
             if not text.strip():
                 error = "No text detected"
@@ -68,7 +78,7 @@ def download():
     return send_file("output/result.json", as_attachment=True)
 
 
-# IMPORTANT FOR RENDER
+# Required for Render
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
