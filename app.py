@@ -6,7 +6,8 @@ import os
 
 app = Flask(__name__)
 
-# pytesseract.pytesseract.tesseract_cmd = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
+# Ensure output folder exists
+os.makedirs("output", exist_ok=True)
 
 def process_image(image):
     image = image.convert("L")
@@ -14,40 +15,61 @@ def process_image(image):
     image = image.point(lambda x: 0 if x < 140 else 255)
     return image
 
-def extract_text(image):
-    return pytesseract.image_to_string(image)
-
-def convert_to_json(text):
-    data = {}
-    for line in text.split("\n"):
-        if ":" in line:
-            key, value = line.split(":", 1)
-            data[key.strip()] = value.strip()
-    return data
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     result = None
+    error = None
 
-    if request.method == 'POST':
-        file = request.files['file']
-        image = Image.open(file)
+    try:
+        if request.method == 'POST':
 
-        image = process_image(image)
-        text = extract_text(image)
-        data = convert_to_json(text)
+            if 'file' not in request.files:
+                error = "No file uploaded"
+                return render_template('index.html', result=result, error=error)
 
-        result = json.dumps(data, indent=4)
+            file = request.files['file']
 
-        os.makedirs("output", exist_ok=True)
-        with open("output/result.json", "w") as f:
-            json.dump(data, f, indent=4)
+            if file.filename == '':
+                error = "Empty file"
+                return render_template('index.html', result=result, error=error)
 
-    return render_template('index.html', result=result)
+            image = Image.open(file)
+
+            image = process_image(image)
+
+            # OCR
+            text = pytesseract.image_to_string(image)
+
+            if not text.strip():
+                error = "No text detected"
+                return render_template('index.html', result=result, error=error)
+
+            # Convert to JSON
+            data = {}
+            for line in text.split("\n"):
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    data[key.strip()] = value.strip()
+
+            result = json.dumps(data, indent=4)
+
+            with open("output/result.json", "w") as f:
+                json.dump(data, f, indent=4)
+
+    except Exception as e:
+        error = str(e)
+        print("ERROR:", e)
+
+    return render_template('index.html', result=result, error=error)
+
 
 @app.route('/download')
 def download():
     return send_file("output/result.json", as_attachment=True)
 
+
+# IMPORTANT FOR RENDER
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
