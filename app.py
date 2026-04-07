@@ -5,14 +5,16 @@ import requests
 
 app = Flask(__name__)
 
+# Ensure output folder exists
 os.makedirs("output", exist_ok=True)
 
-# 🔥 OCR using API (no Tesseract needed)
+
+# 🔥 OCR using API
 def extract_text_api(file):
     url = "https://api.ocr.space/parse/image"
 
     payload = {
-        'apikey': 'helloworld',  # free key
+        'apikey': 'helloworld',
         'language': 'eng'
     }
 
@@ -26,7 +28,7 @@ def extract_text_api(file):
     try:
         return result['ParsedResults'][0]['ParsedText']
     except:
-        return "OCR Failed"
+        return ""
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -47,22 +49,44 @@ def index():
                 error = "Empty file"
                 return render_template('index.html', result=result, error=error)
 
-            # 🔥 OCR using API
+            # 🔥 Extract text
             text = extract_text_api(file)
+            print("OCR TEXT:\n", text)  # Debug
 
             if not text.strip():
                 error = "No text detected"
                 return render_template('index.html', result=result, error=error)
 
-            # Convert to JSON
+            # 🔥 Process lines
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
+
             data = {}
-            for line in text.split("\n"):
+
+            # ✅ Case 1: Key: Value parsing
+            for line in lines:
                 if ":" in line:
                     key, value = line.split(":", 1)
                     data[key.strip()] = value.strip()
 
+            # ✅ Case 2: Smart detection (fallback)
+            if not data:
+                for line in lines:
+                    if any(char.isdigit() for char in line):
+                        data["Amount"] = line
+                    elif "paid" in line.lower():
+                        data["Status"] = "Paid"
+                    elif "pending" in line.lower():
+                        data["Status"] = "Pending"
+                    elif len(line.split()) <= 3:
+                        data["Name"] = line
+
+            # ✅ Final fallback
+            if not data:
+                data["raw_text"] = lines
+
             result = json.dumps(data, indent=4)
 
+            # Save JSON
             with open("output/result.json", "w") as f:
                 json.dump(data, f, indent=4)
 
@@ -80,6 +104,5 @@ def download():
 
 # Required for Render
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
