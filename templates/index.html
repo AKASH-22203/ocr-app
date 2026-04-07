@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <title>OCR Document Processor</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>📄 OCR Document Processor</h1>
+
+      <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" required />
+        <button type="submit">Upload & Process</button>
+      </form>
+
+      {% if result %}
+      <div class="result-box">
+        <h2>Extracted JSON</h2>
+        <pre id="jsonData">{{ result }}</pre>
+
+        <button onclick="copyJSON()">📋 Copy</button>
+        <a href="/download"><button>⬇ Download JSON</button></a>
+      </div>
+      {% endif %}
+    </div>
+
+    <script>
+      function copyJSON() {
+        const text = document.getElementById('jsonData').innerText
+        navigator.clipboard.writeText(text)
+        alert('Copied to clipboard!')
+      }
+    </script>
+  </body>
+</html>
