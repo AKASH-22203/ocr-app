@@ -2,22 +2,12 @@ from flask import Flask, render_template, request, send_file
 import json
 import os
 import requests
-from PIL import Image
-import io
+
 app = Flask(__name__)
 
 # Ensure output folder exists
 os.makedirs("output", exist_ok=True)
 
-def preprocess_image(file):
-    image = Image.open(file).convert("L")  # grayscale
-    image = image.resize((1000, 1000))
-
-    img_byte_arr = io.BytesIO()
-    image.save(img_byte_arr, format='PNG')
-    img_byte_arr.seek(0)
-
-    return img_byte_arr
 # 🔥 OCR using API
 def extract_text_api(file):
     url = "https://api.ocr.space/parse/image"
@@ -62,8 +52,7 @@ def index():
 
             # 🔥 Extract text
             file.seek(0)
-            processed_file=preprocess_image(file)
-            text = extract_text_api(processed_file)
+            text = extract_text_api(file)
             print("OCR TEXT:\n", text)  # Debug
 
             if not text.strip():
