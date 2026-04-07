@@ -8,7 +8,18 @@ app = Flask(__name__)
 # Ensure output folder exists
 os.makedirs("output", exist_ok=True)
 
+from PIL import Image
+import io
 
+def preprocess_image(file):
+    image = Image.open(file).convert("L")  # grayscale
+    image = image.resize((1000, 1000))
+
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+
+    return img_byte_arr
 # 🔥 OCR using API
 def extract_text_api(file):
     url = "https://api.ocr.space/parse/image"
@@ -18,18 +29,20 @@ def extract_text_api(file):
         'language': 'eng'
     }
 
+    # 🔥 FIX: read file properly
     files = {
-        'file': file
+        'file': (file.filename, file.read())
     }
 
     response = requests.post(url, files=files, data=payload)
     result = response.json()
 
+    print("OCR API RESPONSE:", result)  # DEBUG
+
     try:
         return result['ParsedResults'][0]['ParsedText']
     except:
         return ""
-
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -50,7 +63,9 @@ def index():
                 return render_template('index.html', result=result, error=error)
 
             # 🔥 Extract text
-            text = extract_text_api(file)
+            file.seek(0)
+            processed_file=preprocess_image(file)
+            text = extract_text_api(processed_file)
             print("OCR TEXT:\n", text)  # Debug
 
             if not text.strip():
