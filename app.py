@@ -2,14 +2,12 @@ from flask import Flask, render_template, request, send_file
 import json
 import os
 import requests
-
+from PIL import Image
+import io
 app = Flask(__name__)
 
 # Ensure output folder exists
 os.makedirs("output", exist_ok=True)
-
-from PIL import Image
-import io
 
 def preprocess_image(file):
     image = Image.open(file).convert("L")  # grayscale
