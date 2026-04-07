@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 # Setup paths
-pytesseract.pytesseract.tesseract_cmd = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
+# pytesseract.pytesseract.tesseract_cmd = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
 
 # Step 1: Load Image
 def load_image(image_path):
